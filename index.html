@@ -72,7 +72,6 @@
             btn.disabled = true; 
             btn.innerText = "Publication en cours...";
 
-            // Préparation des données dans une structure plate
             const payload = {
                 pageId: document.getElementById('fbPageId').value.trim(),
                 token: document.getElementById('fbPageToken').value.trim(),
@@ -86,13 +85,15 @@
                 });
                 
                 if (error) {
-                    console.error("Détails de l'erreur Supabase :", error);
-                    throw new Error("La fonction a retourné une erreur : " + JSON.stringify(error));
+                    // Ici, on tente de récupérer le message d'erreur détaillé envoyé par la fonction
+                    const errorMsg = (error.context && error.context.error) ? error.context.error : error.message;
+                    console.error("Détails de l'erreur :", error);
+                    throw new Error(errorMsg);
                 }
                 
                 alert("Publié avec succès !");
             } catch (e) { 
-                console.error(e);
+                console.error("Erreur complète :", e);
                 alert("Erreur de publication : " + e.message); 
                 btn.disabled = false; 
                 btn.innerText = "Publier sur Facebook";
