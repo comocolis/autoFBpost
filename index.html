@@ -72,20 +72,22 @@
             btn.disabled = true; 
             btn.innerText = "Publication en cours...";
 
+            // Préparation des données dans une structure plate
+            const payload = {
+                pageId: document.getElementById('fbPageId').value.trim(),
+                token: document.getElementById('fbPageToken').value.trim(),
+                message: document.getElementById('aiOutput').value.trim(),
+                imageUrl: selectedImgUrl
+            };
+
             try {
-                // Utilisation de invoke avec gestion explicite des erreurs
-                const response = await supabaseClient.functions.invoke('publish-to-fb-ts', {
-                    body: { 
-                        pageId: document.getElementById('fbPageId').value, 
-                        token: document.getElementById('fbPageToken').value, 
-                        message: document.getElementById('aiOutput').value, 
-                        imageUrl: selectedImgUrl 
-                    }
+                const { data, error } = await supabaseClient.functions.invoke('publish-to-fb-ts', {
+                    body: payload
                 });
                 
-                // Vérifier si la réponse contient des erreurs
-                if (response.error) {
-                    throw new Error(JSON.stringify(response.error));
+                if (error) {
+                    console.error("Détails de l'erreur Supabase :", error);
+                    throw new Error("La fonction a retourné une erreur : " + JSON.stringify(error));
                 }
                 
                 alert("Publié avec succès !");
