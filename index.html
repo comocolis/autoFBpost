@@ -88,28 +88,32 @@
             const pageId = document.getElementById('fbPageId').value;
             const token = document.getElementById('fbPageToken').value;
             const message = document.getElementById('aiOutput').value;
-            const wa = document.getElementById('waNumber').value;
+            const waRaw = document.getElementById('waNumber').value;
+            const wa = waRaw.replace(/\D/g, ''); 
 
             if(!pageId || !token) return alert("Veuillez remplir le Page ID et le Token.");
 
             const btn = document.getElementById('publishBtn');
-            btn.disabled = true; btn.innerText = "Publication en cours...";
+            btn.disabled = true; 
+            btn.innerText = "Publication en cours...";
 
             try {
                 const { data, error } = await supabaseClient.functions.invoke('publish-to-fb', {
                     body: { pageId, token, message, imageUrl: selectedImgUrl }
                 });
-                if (error) throw error;
+                
+                if (error) throw new Error(error.message || "Erreur inconnue");
 
                 alert("Publié avec succès !");
                 
-                // Transformation du bouton en lien WhatsApp après succès
                 const container = document.getElementById('actionContainer');
                 container.innerHTML = `<a href="https://wa.me/${wa}" target="_blank" class="block text-center w-full bg-green-500 hover:bg-green-600 py-3 rounded-xl font-bold transition text-white">Contacter via WhatsApp</a>`;
                 
             } catch (e) { 
+                console.error(e);
                 alert("Erreur de publication : " + e.message); 
-                btn.disabled = false; btn.innerText = "Publier sur Facebook";
+                btn.disabled = false; 
+                btn.innerText = "Publier sur Facebook";
             }
         }
     </script>
