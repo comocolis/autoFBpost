@@ -3,24 +3,31 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>autoFBpost — Interface de Gestion</title>
+    <title>autoFBpost — Interface Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' };
-    </script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen p-4 md:p-8">
     <div id="app" class="max-w-2xl mx-auto">
         <header class="mb-8 text-center">
             <h1 class="text-4xl font-bold mb-2">autoFBpost</h1>
-            <p class="text-gray-400">Générez et publiez vos posts automatiquement</p>
+            <p class="text-gray-400">Générez et publiez vos posts (3 choix d'images)</p>
         </header>
 
+        <!-- Configuration -->
+        <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Configuration Facebook</h2>
+            <input type="text" id="fbPageId" placeholder="FB Page ID" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-3">
+            <input type="text" id="fbPageToken" placeholder="FB Page Token" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3">
+            <input type="text" id="waNumber" placeholder="Numéro WhatsApp" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mt-3">
+        </div>
+
+        <!-- Génération -->
         <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
             <div class="mb-6">
-                <label class="block text-sm font-medium mb-2">Choisir une catégorie</label>
-                <select id="category" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                <label class="block text-sm font-medium mb-2">Catégorie</label>
+                <select id="category" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3">
                     <option value="cosmetique">Cosmétiques Naturels</option>
                     <option value="tech">Gadgets & Tech</option>
                     <option value="maison">Décoration Maison</option>
@@ -28,25 +35,21 @@
                 </select>
             </div>
 
-            <button id="generateBtn" onclick="discover()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all mb-6">
-                Chercher un produit & Générer
+            <button id="generateBtn" onclick="discover()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg mb-6 transition">
+                Générer les 3 options
             </button>
 
-            <div id="productPreview" class="hidden mb-6">
-                <img id="productImg" src="" alt="Produit" class="w-full h-auto rounded-lg mb-4 border border-gray-700" onerror="this.style.display='none'">
-                <textarea id="aiOutput" rows="6" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-4 text-sm" readonly></textarea>
+            <div id="productPreview" class="hidden space-y-4">
+                <p class="text-sm text-gray-400">Cliquez sur une image pour la sélectionner :</p>
+                <div id="imageGrid" class="grid grid-cols-3 gap-2">
+                    <!-- Images générées injectées ici -->
+                </div>
+                <textarea id="aiOutput" rows="5" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-4 text-sm" placeholder="Légende générée..."></textarea>
             </div>
 
-            <button onclick="publish()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition-all">
+            <button onclick="publish()" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition">
                 Publier sur Facebook
             </button>
-        </div>
-
-        <div class="mt-8 bg-gray-900 p-6 rounded-2xl border border-gray-800">
-            <h2 class="text-xl font-semibold mb-4">Configuration</h2>
-            <input type="text" id="fbPageId" placeholder="FB Page ID" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-3">
-            <input type="text" id="fbPageToken" placeholder="FB Page Token" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 mb-3">
-            <input type="text" id="waNumber" placeholder="Numéro WhatsApp" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3">
         </div>
     </div>
 
@@ -56,48 +59,61 @@
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndydGxucWlmZXlubWprYnRvbm15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NDI2MDMsImV4cCI6MjA5NzMxODYwM30.aeVGrIn6GO8-giGyvwFNTavolzOZhNgW8aFR3-inVvY'
         );
 
+        let selectedImgUrl = "";
+
+        // Sauvegarde auto des configs
+        ['fbPageId', 'fbPageToken', 'waNumber'].forEach(id => {
+            const el = document.getElementById(id);
+            el.value = localStorage.getItem(id) || '';
+            el.onchange = () => localStorage.setItem(id, el.value);
+        });
+
         async function discover() {
             const btn = document.getElementById('generateBtn');
-            btn.disabled = true;
-            btn.innerText = "Recherche en cours...";
+            const grid = document.getElementById('imageGrid');
+            btn.disabled = true; btn.innerText = "Génération en cours...";
+            grid.innerHTML = "";
+            selectedImgUrl = "";
             
             try {
                 const { data, error } = await supabaseClient.functions.invoke('discover-product', { 
-                    body: { 
-                        category: document.getElementById('category').value, 
-                        wa: document.getElementById('waNumber').value || "0600000000" 
-                    } 
+                    body: { category: document.getElementById('category').value, wa: document.getElementById('waNumber').value || "0600000000" } 
                 });
                 if (error) throw error;
                 
                 document.getElementById('aiOutput').value = data.content;
-                const img = document.getElementById('productImg');
-                img.src = data.imageUrl;
                 document.getElementById('productPreview').classList.remove('hidden');
-                img.style.display = 'block';
-            } catch (err) {
-                alert("Erreur: " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Chercher un produit & Générer";
-            }
+
+                data.imageUrls.forEach((url) => {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.className = "w-full aspect-square object-cover rounded-lg border-4 border-transparent cursor-pointer hover:border-blue-500 transition";
+                    img.onclick = function() {
+                        document.querySelectorAll('#imageGrid img').forEach(i => i.classList.replace('border-blue-500', 'border-transparent'));
+                        this.classList.replace('border-transparent', 'border-blue-500');
+                        selectedImgUrl = url;
+                    };
+                    grid.appendChild(img);
+                });
+            } catch (err) { alert("Erreur: " + err.message); } 
+            finally { btn.disabled = false; btn.innerText = "Générer les 3 options"; }
         }
 
         async function publish() {
+            if(!selectedImgUrl) return alert("Veuillez d'abord cliquer sur l'une des images pour la sélectionner.");
+            
             try {
-                const { data, error } = await supabaseClient.functions.invoke('publish-to-fb', { 
+                const { error } = await supabaseClient.functions.invoke('publish-to-fb', { 
                     body: { 
                         pageId: document.getElementById('fbPageId').value, 
                         token: document.getElementById('fbPageToken').value, 
                         message: document.getElementById('aiOutput').value, 
-                        imageUrl: document.getElementById('productImg').src 
+                        imageUrl: selectedImgUrl 
                     } 
                 });
                 if (error) throw error;
-                alert("Post publié avec succès !");
-            } catch (err) {
-                alert("Erreur de publication: " + err.message);
-            }
+                alert("Post publié avec succès sur Facebook !");
+            } catch (err) { alert("Erreur de publication: " + err.message); }
         }
     </script>
 </body>
