@@ -47,6 +47,7 @@
     </div>
 
     <script>
+        // Initialisation Supabase
         const supabaseClient = supabase.createClient(
             'https://wrtlnqifeynmjkbtonmy.supabase.co', 
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndydGxucWlmZXlubWprYnRvbm15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NDI2MDMsImV4cCI6MjA5NzMxODYwM30.aeVGrIn6GO8-giGyvwFNTavolzOZhNgW8aFR3-inVvY'
@@ -57,16 +58,22 @@
         async function discover() {
             const btn = document.getElementById('genBtn');
             const grid = document.getElementById('imageGrid');
-            btn.disabled = true; btn.innerText = "Analyse en cours...";
-            grid.innerHTML = ""; grid.classList.remove('hidden');
+            const waInput = document.getElementById('waNumber').value;
+            
+            btn.disabled = true; 
+            btn.innerText = "Analyse en cours...";
+            grid.innerHTML = ""; 
+            grid.classList.remove('hidden');
             
             try {
                 const { data, error } = await supabaseClient.functions.invoke('discover-product', { 
-                    body: { category: document.getElementById('category').value, wa: document.getElementById('waNumber').value || "0600000000" } 
+                    body: { category: document.getElementById('category').value, wa: waInput } 
                 });
+                
                 if (error) throw error;
                 
                 document.getElementById('aiOutput').value = data.content;
+                
                 data.imageUrls.forEach(url => {
                     const img = document.createElement('img');
                     img.src = url;
@@ -78,12 +85,16 @@
                     };
                     grid.appendChild(img);
                 });
-            } catch (e) { alert("Erreur : " + e.message); } 
-            finally { btn.disabled = false; btn.innerText = "Générer 3 options"; }
+            } catch (e) { 
+                alert("Erreur de communication : " + e.message); 
+            } finally { 
+                btn.disabled = false; 
+                btn.innerText = "Générer 3 options"; 
+            }
         }
 
         async function publish() {
-            if(!selectedImgUrl) return alert("Sélectionnez une image d'abord.");
+            if(!selectedImgUrl) return alert("Veuillez d'abord sélectionner une image.");
             
             const pageId = document.getElementById('fbPageId').value;
             const token = document.getElementById('fbPageToken').value;
@@ -91,27 +102,28 @@
             const waRaw = document.getElementById('waNumber').value;
             const wa = waRaw.replace(/\D/g, ''); 
 
-            if(!pageId || !token) return alert("Veuillez remplir le Page ID et le Token.");
+            if(!pageId || !token) return alert("Remplissez le Page ID et le Token.");
 
             const btn = document.getElementById('publishBtn');
             btn.disabled = true; 
             btn.innerText = "Publication en cours...";
 
             try {
+                // Appel explicite en mode cors pour s'assurer du passage du preflight
                 const { data, error } = await supabaseClient.functions.invoke('publish-to-fb', {
                     body: { pageId, token, message, imageUrl: selectedImgUrl }
                 });
                 
-                if (error) throw new Error(error.message || "Erreur inconnue");
+                if (error) throw new Error(error.message);
 
-                alert("Publié avec succès !");
+                alert("Publié avec succès sur Facebook !");
                 
+                // Transformation du bouton pour guider l'utilisateur vers WhatsApp
                 const container = document.getElementById('actionContainer');
-                container.innerHTML = `<a href="https://wa.me/${wa}" target="_blank" class="block text-center w-full bg-green-500 hover:bg-green-600 py-3 rounded-xl font-bold transition text-white">Contacter via WhatsApp</a>`;
+                container.innerHTML = `<a href="https://wa.me/${wa}" target="_blank" class="block text-center w-full bg-green-600 hover:bg-green-500 py-3 rounded-xl font-bold transition text-white">Contacter via WhatsApp</a>`;
                 
             } catch (e) { 
-                console.error(e);
-                alert("Erreur de publication : " + e.message); 
+                alert("Erreur lors de la publication : " + e.message); 
                 btn.disabled = false; 
                 btn.innerText = "Publier sur Facebook";
             }
