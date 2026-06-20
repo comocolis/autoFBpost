@@ -80,20 +80,22 @@
             };
 
             try {
-                const { data, error } = await supabaseClient.functions.invoke('publish-to-fb-ts', {
-                    body: payload
+                // Utilisation de fetch natif pour bypasser l'erreur générique du SDK Supabase
+                const response = await fetch('https://wrtlnqifeynmjkbtonmy.supabase.co/functions/v1/publish-to-fb-ts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
                 
-                if (error) {
-                    // Ici, on tente de récupérer le message d'erreur détaillé envoyé par la fonction
-                    const errorMsg = (error.context && error.context.error) ? error.context.error : error.message;
-                    console.error("Détails de l'erreur :", error);
-                    throw new Error(errorMsg);
+                const responseData = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(responseData.error || JSON.stringify(responseData));
                 }
                 
                 alert("Publié avec succès !");
             } catch (e) { 
-                console.error("Erreur complète :", e);
+                console.error("Erreur brute :", e);
                 alert("Erreur de publication : " + e.message); 
                 btn.disabled = false; 
                 btn.innerText = "Publier sur Facebook";
